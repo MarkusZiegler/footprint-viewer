@@ -4,316 +4,105 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Footprint Viewer</title>
-
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
-
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;600&display=swap');
+:root {
+  --bg:#0d0d0f; --panel:#161618; --border:#2a2a2e;
+  --accent:#e8ff47; --accent2:#ff6b35; --text:#f0f0ec; --muted:#888880;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 
-  :root {
-    --bg: #0d0d0f;
-    --panel: #161618;
-    --border: #2a2a2e;
-    --accent: #e8ff47;
-    --accent2: #ff6b35;
-    --text: #f0f0ec;
-    --muted: #888880;
-    --radius: 12px;
-  }
+header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--border);z-index:1000;flex-shrink:0;gap:8px}
+.logo{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;letter-spacing:.08em;color:var(--accent);text-transform:uppercase;white-space:nowrap}
+.logo span{color:var(--muted);font-weight:400}
+.header-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+.btn{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;transition:all .15s ease;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#0d0d0f}
+.btn-primary:active{opacity:.8;transform:scale(.97)}
+.btn-ghost{background:var(--border);color:var(--muted)}
+.btn-ghost.active{background:#2a2a1a;color:var(--accent);border:1px solid var(--accent)}
+.btn-ghost:active{opacity:.7}
+.btn-icon{background:var(--border);color:var(--muted);width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;font-size:16px;border-radius:8px}
+.btn-icon:active{opacity:.7;transform:scale(.95)}
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
+#map{flex:1;width:100%;z-index:1}
 
-  /* HEADER */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: var(--panel);
-    border-bottom: 1px solid var(--border);
-    z-index: 1000;
-    flex-shrink: 0;
-  }
+.bottom-panel{background:var(--panel);border-top:1px solid var(--border);z-index:1000;flex-shrink:0}
+.controls-row{display:flex;align-items:center;gap:8px;padding:10px 12px;overflow-x:auto;scrollbar-width:none}
+.controls-row::-webkit-scrollbar{display:none}
+.layer-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;margin-right:2px}
+.divider{width:1px;height:20px;background:var(--border);flex-shrink:0}
 
-  .logo {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.08em;
-    color: var(--accent);
-    text-transform: uppercase;
-  }
+.stats-bar{display:flex;border-top:1px solid var(--border)}
+.stat{flex:1;padding:9px 6px;text-align:center;border-right:1px solid var(--border)}
+.stat:last-child{border-right:none}
+.stat-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--accent);display:block;line-height:1}
+.stat-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-top:3px}
 
-  .logo span {
-    color: var(--muted);
-    font-weight: 400;
-  }
+/* FILTER SHEET */
+.filter-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--panel);border-top:2px solid var(--accent);z-index:2000;padding:16px;transform:translateY(100%);transition:transform .25s ease;border-radius:16px 16px 0 0}
+.filter-sheet.open{transform:translateY(0)}
+.filter-title{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
+.filter-row{display:flex;gap:10px;margin-bottom:12px;align-items:center}
+.filter-row label{font-size:11px;color:var(--muted);width:28px;flex-shrink:0}
+.date-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:13px;-webkit-appearance:none}
+.date-input:focus{outline:none;border-color:var(--accent)}
+.filter-actions{display:flex;gap:8px;margin-top:4px}
+.filter-actions .btn{flex:1;padding:12px}
 
-  .header-actions {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
+/* DROP OVERLAY */
+.drop-overlay{position:absolute;inset:0;background:rgba(13,13,15,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:3000;gap:16px;backdrop-filter:blur(4px)}
+.drop-overlay.hidden{display:none}
+.drop-icon{font-size:52px;animation:float 2.5s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.drop-title{font-family:'DM Mono',monospace;font-size:15px;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+.drop-sub{font-size:13px;color:var(--muted);text-align:center;max-width:260px;line-height:1.5}
+.drop-btn{margin-top:8px;font-size:14px;padding:14px 28px;border-radius:12px}
 
-  /* BUTTONS */
-  .btn {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 14px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    white-space: nowrap;
-  }
+/* LOADING */
+.loading-bar{position:absolute;top:0;left:0;height:3px;background:var(--accent);width:0%;z-index:4000;transition:width .3s ease;box-shadow:0 0 8px var(--accent)}
 
-  .btn-primary {
-    background: var(--accent);
-    color: #0d0d0f;
-  }
-  .btn-primary:active { opacity: 0.8; transform: scale(0.97); }
+/* TOAST */
+.toast{position:absolute;bottom:140px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e1e20;border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-size:13px;color:var(--text);z-index:5000;opacity:0;transition:all .25s ease;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-  .btn-ghost {
-    background: var(--border);
-    color: var(--muted);
-  }
-  .btn-ghost.active {
-    background: #2a2a1a;
-    color: var(--accent);
-    border: 1px solid var(--accent);
-  }
-  .btn-ghost:active { opacity: 0.7; }
+/* TIME POPUP override */
+.leaflet-popup-content-wrapper{background:var(--panel) !important;border:1px solid var(--border) !important;border-radius:10px !important;box-shadow:0 4px 20px rgba(0,0,0,.5) !important;color:var(--text) !important}
+.leaflet-popup-tip{background:var(--panel) !important}
+.leaflet-popup-content{font-family:'DM Mono',monospace;font-size:12px;margin:10px 14px !important;line-height:1.6}
+.popup-time{color:var(--accent);font-size:14px;font-weight:500}
+.popup-label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em}
 
-  .btn-icon {
-    background: var(--border);
-    color: var(--muted);
-    width: 36px;
-    height: 36px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    border-radius: 8px;
-  }
-  .btn-icon:active { opacity: 0.7; transform: scale(0.95); }
+/* Leaflet controls */
+.leaflet-control-zoom{border:none !important;box-shadow:none !important}
+.leaflet-control-zoom a{background:var(--panel) !important;color:var(--text) !important;border:1px solid var(--border) !important;border-radius:8px !important;width:36px !important;height:36px !important;line-height:36px !important;font-size:18px !important;margin-bottom:4px !important}
+.leaflet-control-attribution{background:rgba(13,13,15,.7) !important;color:#555 !important;font-size:9px !important}
+.leaflet-control-attribution a{color:#666 !important}
 
-  /* MAP */
-  #map {
-    flex: 1;
-    width: 100%;
-    z-index: 1;
-  }
-
-  /* BOTTOM PANEL */
-  .bottom-panel {
-    background: var(--panel);
-    border-top: 1px solid var(--border);
-    z-index: 1000;
-    flex-shrink: 0;
-    transition: all 0.25s ease;
-  }
-
-  .controls-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 12px;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .controls-row::-webkit-scrollbar { display: none; }
-
-  .layer-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    white-space: nowrap;
-    margin-right: 2px;
-  }
-
-  .divider {
-    width: 1px;
-    height: 20px;
-    background: var(--border);
-    flex-shrink: 0;
-  }
-
-  /* STATS BAR */
-  .stats-bar {
-    display: flex;
-    gap: 0;
-    border-top: 1px solid var(--border);
-    padding: 0;
-  }
-
-  .stat {
-    flex: 1;
-    padding: 10px 8px;
-    text-align: center;
-    border-right: 1px solid var(--border);
-  }
-  .stat:last-child { border-right: none; }
-
-  .stat-val {
-    font-family: 'DM Mono', monospace;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--accent);
-    display: block;
-    line-height: 1;
-  }
-
-  .stat-label {
-    font-size: 9px;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    display: block;
-    margin-top: 3px;
-  }
-
-  /* DROP OVERLAY */
-  .drop-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(13,13,15,0.92);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-    gap: 16px;
-    backdrop-filter: blur(4px);
-  }
-
-  .drop-overlay.hidden { display: none; }
-
-  .drop-icon {
-    font-size: 52px;
-    animation: float 2.5s ease-in-out infinite;
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-  }
-
-  .drop-title {
-    font-family: 'DM Mono', monospace;
-    font-size: 15px;
-    color: var(--accent);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-  }
-
-  .drop-sub {
-    font-size: 13px;
-    color: var(--muted);
-    text-align: center;
-    max-width: 260px;
-    line-height: 1.5;
-  }
-
-  .drop-btn {
-    margin-top: 8px;
-    font-size: 14px;
-    padding: 14px 28px;
-    border-radius: 12px;
-  }
-
-  /* LOADING */
-  .loading-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 3px;
-    background: var(--accent);
-    width: 0%;
-    z-index: 3000;
-    transition: width 0.3s ease;
-    box-shadow: 0 0 8px var(--accent);
-  }
-
-  /* TOAST */
-  .toast {
-    position: absolute;
-    bottom: 120px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: #1e1e20;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 18px;
-    font-size: 13px;
-    color: var(--text);
-    z-index: 4000;
-    opacity: 0;
-    transition: all 0.25s ease;
-    white-space: nowrap;
-    pointer-events: none;
-  }
-  .toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  /* Leaflet overrides */
-  .leaflet-control-zoom {
-    border: none !important;
-    box-shadow: none !important;
-  }
-  .leaflet-control-zoom a {
-    background: var(--panel) !important;
-    color: var(--text) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 8px !important;
-    width: 36px !important;
-    height: 36px !important;
-    line-height: 36px !important;
-    font-size: 18px !important;
-    margin-bottom: 4px !important;
-  }
-  .leaflet-control-attribution {
-    background: rgba(13,13,15,0.7) !important;
-    color: #555 !important;
-    font-size: 9px !important;
-  }
-  .leaflet-control-attribution a { color: #666 !important; }
+.filter-active-badge{display:none;background:var(--accent2);color:#fff;font-family:'DM Mono',monospace;font-size:9px;border-radius:4px;padding:2px 5px;margin-left:4px;vertical-align:middle}
+.filter-active-badge.show{display:inline}
 </style>
 </head>
 <body>
-
 <div class="loading-bar" id="loadingBar"></div>
 <div class="toast" id="toast"></div>
 
-<!-- HEADER -->
 <header>
   <div class="logo">Footprint <span>/ Viewer</span></div>
   <div class="header-actions">
-    <button class="btn btn-ghost btn-icon" id="btnFit" title="Karte einpassen" style="display:none">⊡</button>
+    <button class="btn btn-ghost btn-icon" id="btnFit" style="display:none" title="Einpassen">⊡</button>
+    <button class="btn btn-ghost" id="btnFilter" style="display:none">
+      Filter<span class="filter-active-badge" id="filterBadge">ON</span>
+    </button>
     <button class="btn btn-primary" id="btnLoad">GPX laden</button>
   </div>
 </header>
 
-<!-- MAP -->
 <div id="map"></div>
 
 <!-- EMPTY OVERLAY -->
@@ -335,251 +124,276 @@
     <button class="btn btn-ghost active" id="btnMapDark">Dunkel</button>
     <button class="btn btn-ghost" id="btnMapOSM">OSM</button>
   </div>
-  <div class="stats-bar" id="statsBar">
-    <div class="stat">
-      <span class="stat-val" id="statDist">—</span>
-      <span class="stat-label">km gesamt</span>
-    </div>
-    <div class="stat">
-      <span class="stat-val" id="statPoints">—</span>
-      <span class="stat-label">Punkte</span>
-    </div>
-    <div class="stat">
-      <span class="stat-val" id="statDays">—</span>
-      <span class="stat-label">Tage</span>
-    </div>
-    <div class="stat">
-      <span class="stat-val" id="statRange">—</span>
-      <span class="stat-label">Zeitraum</span>
-    </div>
+  <div class="stats-bar">
+    <div class="stat"><span class="stat-val" id="statDist">—</span><span class="stat-label">km</span></div>
+    <div class="stat"><span class="stat-val" id="statPoints">—</span><span class="stat-label">Punkte</span></div>
+    <div class="stat"><span class="stat-val" id="statDays">—</span><span class="stat-label">Tage</span></div>
+    <div class="stat"><span class="stat-val" id="statRange">—</span><span class="stat-label">Zeitraum</span></div>
+  </div>
+</div>
+
+<!-- FILTER SHEET -->
+<div class="filter-sheet" id="filterSheet">
+  <div class="filter-title">Zeitraum filtern</div>
+  <div class="filter-row">
+    <label>Von</label>
+    <input type="date" class="date-input" id="dateFrom">
+  </div>
+  <div class="filter-row">
+    <label>Bis</label>
+    <input type="date" class="date-input" id="dateTo">
+  </div>
+  <div class="filter-actions">
+    <button class="btn btn-ghost" id="btnFilterReset">Zurücksetzen</button>
+    <button class="btn btn-primary" id="btnFilterApply">Anwenden</button>
   </div>
 </div>
 
 <input type="file" id="fileInput" accept=".gpx" style="display:none" multiple>
 
 <script>
-// ── MAP SETUP ──────────────────────────────────────────────────────────────
-const darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '© OpenStreetMap, © CARTO',
-  subdomains: 'abcd', maxZoom: 20
-});
+// ── MAP ───────────────────────────────────────────────────────────────────
+const darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  {attribution:'© OpenStreetMap, © CARTO',subdomains:'abcd',maxZoom:20});
+const osmTile  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {attribution:'© OpenStreetMap contributors',maxZoom:20});
 
-const osmTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap contributors',
-  maxZoom: 20
-});
-
-const map = L.map('map', {
-  center: [48.137, 11.576], // München
-  zoom: 11,
-  zoomControl: true,
-  layers: [darkTile]
-});
+const map = L.map('map',{center:[48.137,11.576],zoom:11,zoomControl:true,layers:[darkTile]});
 
 // ── STATE ─────────────────────────────────────────────────────────────────
-let routeLayer = null;
-let heatLayer  = null;
-let allPoints  = [];
-let showRoute  = true;
-let showHeat   = true;
-let currentMap = 'dark';
-let allBounds  = null;
+let allParsedPoints = [];   // full dataset [{lat,lon,ts}]
+let filteredPoints  = [];   // after date filter
+let routeLayer = null, heatLayer = null;
+let showRoute = true, showHeat = true, currentMap = 'dark';
+let allBounds = null;
+let filterFrom = null, filterTo = null;
+let filterSheetOpen = false;
 
 // ── GPX PARSER ────────────────────────────────────────────────────────────
 function parseGPX(text) {
   const parser = new DOMParser();
-  const doc    = parser.parseFromString(text, 'application/xml');
-  const pts    = [];
-  let minDate  = Infinity, maxDate = -Infinity;
-
-  // trkpt and wpt
-  const nodes = [...doc.querySelectorAll('trkpt'), ...doc.querySelectorAll('wpt')];
-  nodes.forEach(pt => {
-    const lat  = parseFloat(pt.getAttribute('lat'));
-    const lon  = parseFloat(pt.getAttribute('lon'));
+  const doc = parser.parseFromString(text, 'application/xml');
+  const pts = [];
+  doc.querySelectorAll('trkpt, wpt').forEach(pt => {
+    const lat = parseFloat(pt.getAttribute('lat'));
+    const lon = parseFloat(pt.getAttribute('lon'));
     if (isNaN(lat) || isNaN(lon)) return;
     const timeEl = pt.querySelector('time');
     const ts = timeEl ? new Date(timeEl.textContent).getTime() : null;
-    if (ts) { minDate = Math.min(minDate, ts); maxDate = Math.max(maxDate, ts); }
-    pts.push({ lat, lon, ts });
+    pts.push({lat, lon, ts});
   });
-
-  return { pts, minDate, maxDate };
+  return pts;
 }
 
-// ── HAVERSINE DISTANCE ────────────────────────────────────────────────────
+// ── DECIMATION (Douglas-Peucker light) ────────────────────────────────────
+function decimate(pts, maxPts) {
+  if (pts.length <= maxPts) return pts;
+  const step = Math.ceil(pts.length / maxPts);
+  return pts.filter((_, i) => i % step === 0);
+}
+
+// ── HAVERSINE ─────────────────────────────────────────────────────────────
 function haversine(a, b) {
-  const R = 6371;
-  const dLat = (b.lat - a.lat) * Math.PI / 180;
-  const dLon = (b.lon - a.lon) * Math.PI / 180;
-  const s = Math.sin(dLat/2)**2 +
-            Math.cos(a.lat*Math.PI/180) * Math.cos(b.lat*Math.PI/180) * Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
+  const R = 6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lon-a.lon)*Math.PI/180;
+  const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
 }
-
 function totalDistance(pts) {
-  let d = 0;
-  for (let i = 1; i < pts.length; i++) d += haversine(pts[i-1], pts[i]);
-  return d;
+  let d=0; for(let i=1;i<pts.length;i++) d+=haversine(pts[i-1],pts[i]); return d;
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────
-function renderData(newPts, minDate, maxDate) {
-  // Merge
-  allPoints = [...allPoints, ...newPts];
-
-  // Remove old layers
+function render(pts) {
+  filteredPoints = pts;
   if (routeLayer) map.removeLayer(routeLayer);
   if (heatLayer)  map.removeLayer(heatLayer);
 
-  // Route – thin neon line
-  const latlngs = allPoints.map(p => [p.lat, p.lon]);
-  routeLayer = L.polyline(latlngs, {
-    color: '#e8ff47',
-    weight: 1.5,
-    opacity: 0.6,
-    smoothFactor: 1
+  if (pts.length === 0) { updateStats([]); return; }
+
+  // Route – decimate for performance
+  const routePts = decimate(pts, 6000);
+  routeLayer = L.polyline(routePts.map(p=>[p.lat,p.lon]), {
+    color:'#e8ff47', weight:1.5, opacity:.6, smoothFactor:1.5
   });
 
-  // Heatmap
-  const heatData = allPoints.map(p => [p.lat, p.lon, 1]);
-  heatLayer = L.heatLayer(heatData, {
-    radius: 18,
-    blur: 22,
-    maxZoom: 17,
-    gradient: { 0.0: '#1a1aff', 0.3: '#00ccff', 0.6: '#ff6b35', 1.0: '#e8ff47' }
+  // Heatmap – all points
+  heatLayer = L.heatLayer(pts.map(p=>[p.lat,p.lon,1]), {
+    radius:18, blur:22, maxZoom:17,
+    gradient:{0.0:'#1a1aff',0.3:'#00ccff',0.6:'#ff6b35',1.0:'#e8ff47'}
   });
 
   if (showRoute) routeLayer.addTo(map);
   if (showHeat)  heatLayer.addTo(map);
 
-  // Bounds
-  if (latlngs.length > 0) {
-    allBounds = L.latLngBounds(latlngs);
-    map.fitBounds(allBounds, { padding: [20, 20] });
-  }
-
-  // Stats
-  const dist  = totalDistance(allPoints);
-  const days  = allPoints.reduce((s, p) => {
-    if (!p.ts) return s;
-    const d = new Date(p.ts).toDateString();
-    s.add(d);
-    return s;
-  }, new Set()).size;
-
-  document.getElementById('statDist').textContent   = dist > 0 ? Math.round(dist).toLocaleString('de') : '—';
-  document.getElementById('statPoints').textContent = allPoints.length.toLocaleString('de');
-  document.getElementById('statDays').textContent   = days > 0 ? days.toLocaleString('de') : '—';
-
-  if (minDate !== Infinity && maxDate !== -Infinity) {
-    const fmt = d => new Date(d).toLocaleDateString('de', { year:'2-digit', month:'short' });
-    document.getElementById('statRange').textContent = fmt(minDate) + '–' + fmt(maxDate);
-  } else {
-    document.getElementById('statRange').textContent = '—';
-  }
-
-  // Show UI
-  document.getElementById('dropOverlay').classList.add('hidden');
-  document.getElementById('bottomPanel').style.display = '';
-  document.getElementById('btnFit').style.display = '';
+  const bounds = L.latLngBounds(pts.map(p=>[p.lat,p.lon]));
+  allBounds = bounds;
+  map.fitBounds(bounds, {padding:[20,20]});
+  updateStats(pts);
 }
+
+function updateStats(pts) {
+  const dist  = totalDistance(pts);
+  const tsPts = pts.filter(p=>p.ts);
+  const days  = new Set(tsPts.map(p=>new Date(p.ts).toDateString())).size;
+  const minTs = tsPts.length ? Math.min(...tsPts.map(p=>p.ts)) : null;
+  const maxTs = tsPts.length ? Math.max(...tsPts.map(p=>p.ts)) : null;
+  const fmt = ts => new Date(ts).toLocaleDateString('de',{year:'2-digit',month:'short'});
+
+  document.getElementById('statDist').textContent   = dist>0 ? Math.round(dist).toLocaleString('de') : '—';
+  document.getElementById('statPoints').textContent = pts.length.toLocaleString('de');
+  document.getElementById('statDays').textContent   = days>0 ? days.toLocaleString('de') : '—';
+  document.getElementById('statRange').textContent  = minTs ? fmt(minTs)+'–'+fmt(maxTs) : '—';
+}
+
+// ── FILTER ────────────────────────────────────────────────────────────────
+function applyFilter() {
+  const from = filterFrom ? new Date(filterFrom).setHours(0,0,0,0) : null;
+  const to   = filterTo   ? new Date(filterTo).setHours(23,59,59,999) : null;
+  let pts = allParsedPoints;
+  if (from) pts = pts.filter(p => p.ts && p.ts >= from);
+  if (to)   pts = pts.filter(p => p.ts && p.ts <= to);
+  render(pts);
+  document.getElementById('filterBadge').classList.toggle('show', !!(from||to));
+}
+
+// ── NEAREST POINT LOOKUP ──────────────────────────────────────────────────
+function findNearest(latlng) {
+  const pts = filteredPoints.filter(p=>p.ts);
+  if (!pts.length) return null;
+  let best=null, bestD=Infinity;
+  // Search within current map view first for speed
+  const bounds = map.getBounds().pad(0.1);
+  const inView = pts.filter(p=>bounds.contains([p.lat,p.lon]));
+  const search = inView.length > 0 ? inView : pts;
+  search.forEach(p=>{
+    const d = (p.lat-latlng.lat)**2 + (p.lon-latlng.lng)**2;
+    if(d<bestD){bestD=d;best=p;}
+  });
+  return best;
+}
+
+function formatLocalTime(ts) {
+  const d = new Date(ts);
+  const date = d.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Berlin'});
+  const time = d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'Europe/Berlin'});
+  return {date, time};
+}
+
+map.on('click', e => {
+  const pt = findNearest(e.latlng);
+  if (!pt) return;
+  const {date, time} = formatLocalTime(pt.ts);
+  L.popup({closeButton:true, maxWidth:220})
+    .setLatLng([pt.lat, pt.lon])
+    .setContent(`
+      <div class="popup-label">Aufzeichnung</div>
+      <div class="popup-time">${time}</div>
+      <div style="color:var(--muted);font-size:11px;margin-top:2px">${date}</div>
+      <div style="color:var(--border);font-size:10px;margin-top:4px">
+        ${pt.lat.toFixed(5)}, ${pt.lon.toFixed(5)}
+      </div>`)
+    .openOn(map);
+});
 
 // ── FILE LOADING ──────────────────────────────────────────────────────────
 async function loadFiles(files) {
-  if (!files || files.length === 0) return;
+  if(!files||!files.length) return;
   setLoading(true);
-  let totalPts = 0, minD = Infinity, maxD = -Infinity;
-  const allNew = [];
-
-  for (const file of files) {
+  let newPts = [];
+  for(const file of files) {
     const text = await file.text();
-    const { pts, minDate, maxDate } = parseGPX(text);
-    allNew.push(...pts);
-    totalPts += pts.length;
-    minD = Math.min(minD, minDate);
-    maxD = Math.max(maxD, maxDate);
+    newPts.push(...parseGPX(text));
   }
-
   setLoading(false);
+  if(!newPts.length){showToast('⚠️ Keine GPS-Punkte gefunden');return;}
 
-  if (totalPts === 0) {
-    showToast('⚠️ Keine GPS-Punkte gefunden');
-    return;
+  allParsedPoints = [...allParsedPoints, ...newPts];
+
+  // Set default date range in filter inputs
+  const tsPts = allParsedPoints.filter(p=>p.ts);
+  if(tsPts.length){
+    const minTs = Math.min(...tsPts.map(p=>p.ts));
+    const maxTs = Math.max(...tsPts.map(p=>p.ts));
+    document.getElementById('dateFrom').value = new Date(minTs).toISOString().slice(0,10);
+    document.getElementById('dateTo').value   = new Date(maxTs).toISOString().slice(0,10);
   }
 
-  renderData(allNew, minD, maxD);
-  showToast(`✓ ${totalPts.toLocaleString('de')} Punkte aus ${files.length} Datei${files.length > 1 ? 'en' : ''} geladen`);
+  applyFilter();
+  document.getElementById('dropOverlay').classList.add('hidden');
+  document.getElementById('bottomPanel').style.display = '';
+  document.getElementById('btnFit').style.display = '';
+  document.getElementById('btnFilter').style.display = '';
+  showToast(`✓ ${newPts.length.toLocaleString('de')} Punkte geladen`);
 }
 
-// ── CONTROLS ──────────────────────────────────────────────────────────────
-document.getElementById('btnLoad').addEventListener('click', () => fileInput.click());
-document.getElementById('btnLoadOverlay').addEventListener('click', () => fileInput.click());
+// ── UI CONTROLS ───────────────────────────────────────────────────────────
+document.getElementById('btnLoad').onclick = ()=>fileInput.click();
+document.getElementById('btnLoadOverlay').onclick = ()=>fileInput.click();
+document.getElementById('fileInput').addEventListener('change', e=>{loadFiles(e.target.files);e.target.value='';});
+document.getElementById('btnFit').onclick = ()=>{ if(allBounds) map.fitBounds(allBounds,{padding:[20,20]}); };
 
-document.getElementById('fileInput').addEventListener('change', e => {
-  loadFiles(e.target.files);
-  e.target.value = '';
-});
-
-document.getElementById('btnFit').addEventListener('click', () => {
-  if (allBounds) map.fitBounds(allBounds, { padding: [20, 20] });
-});
-
-document.getElementById('btnRoute').addEventListener('click', function() {
-  showRoute = !showRoute;
-  this.classList.toggle('active', showRoute);
-  if (routeLayer) {
-    showRoute ? routeLayer.addTo(map) : map.removeLayer(routeLayer);
-  }
-});
-
-document.getElementById('btnHeat').addEventListener('click', function() {
-  showHeat = !showHeat;
-  this.classList.toggle('active', showHeat);
-  if (heatLayer) {
-    showHeat ? heatLayer.addTo(map) : map.removeLayer(heatLayer);
-  }
-});
-
-document.getElementById('btnMapDark').addEventListener('click', function() {
-  if (currentMap === 'dark') return;
-  map.removeLayer(osmTile);
-  darkTile.addTo(map);
-  darkTile.bringToBack();
-  currentMap = 'dark';
-  this.classList.add('active');
+document.getElementById('btnRoute').onclick = function(){
+  showRoute=!showRoute; this.classList.toggle('active',showRoute);
+  if(routeLayer){ showRoute?routeLayer.addTo(map):map.removeLayer(routeLayer); }
+};
+document.getElementById('btnHeat').onclick = function(){
+  showHeat=!showHeat; this.classList.toggle('active',showHeat);
+  if(heatLayer){ showHeat?heatLayer.addTo(map):map.removeLayer(heatLayer); }
+};
+document.getElementById('btnMapDark').onclick = function(){
+  if(currentMap==='dark') return;
+  map.removeLayer(osmTile); darkTile.addTo(map); darkTile.bringToBack();
+  currentMap='dark'; this.classList.add('active');
   document.getElementById('btnMapOSM').classList.remove('active');
-});
-
-document.getElementById('btnMapOSM').addEventListener('click', function() {
-  if (currentMap === 'osm') return;
-  map.removeLayer(darkTile);
-  osmTile.addTo(map);
-  osmTile.bringToBack();
-  currentMap = 'osm';
-  this.classList.add('active');
+};
+document.getElementById('btnMapOSM').onclick = function(){
+  if(currentMap==='osm') return;
+  map.removeLayer(darkTile); osmTile.addTo(map); osmTile.bringToBack();
+  currentMap='osm'; this.classList.add('active');
   document.getElementById('btnMapDark').classList.remove('active');
-});
+};
+
+// Filter sheet
+document.getElementById('btnFilter').onclick = ()=>{
+  filterSheetOpen = !filterSheetOpen;
+  document.getElementById('filterSheet').classList.toggle('open', filterSheetOpen);
+};
+document.getElementById('btnFilterApply').onclick = ()=>{
+  filterFrom = document.getElementById('dateFrom').value;
+  filterTo   = document.getElementById('dateTo').value;
+  applyFilter();
+  filterSheetOpen=false;
+  document.getElementById('filterSheet').classList.remove('open');
+  showToast('Filter angewendet');
+};
+document.getElementById('btnFilterReset').onclick = ()=>{
+  filterFrom=filterTo=null;
+  const tsPts=allParsedPoints.filter(p=>p.ts);
+  if(tsPts.length){
+    document.getElementById('dateFrom').value=new Date(Math.min(...tsPts.map(p=>p.ts))).toISOString().slice(0,10);
+    document.getElementById('dateTo').value=new Date(Math.max(...tsPts.map(p=>p.ts))).toISOString().slice(0,10);
+  }
+  applyFilter();
+  filterSheetOpen=false;
+  document.getElementById('filterSheet').classList.remove('open');
+  document.getElementById('filterBadge').classList.remove('show');
+};
+
+// Close filter on map tap
+map.on('click', ()=>{ if(filterSheetOpen){filterSheetOpen=false;document.getElementById('filterSheet').classList.remove('open');} });
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
-function setLoading(on) {
-  document.getElementById('loadingBar').style.width = on ? '85%' : '100%';
-  if (!on) setTimeout(() => { document.getElementById('loadingBar').style.width = '0%'; }, 400);
+function setLoading(on){
+  document.getElementById('loadingBar').style.width=on?'85%':'100%';
+  if(!on) setTimeout(()=>document.getElementById('loadingBar').style.width='0%',400);
 }
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
 }
-
-// ── DRAG & DROP (für Desktop) ─────────────────────────────────────────────
-document.addEventListener('dragover', e => e.preventDefault());
-document.addEventListener('drop', e => {
-  e.preventDefault();
-  loadFiles(e.dataTransfer.files);
-});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{e.preventDefault();loadFiles(e.dataTransfer.files);});
 </script>
 </body>
 </html>
