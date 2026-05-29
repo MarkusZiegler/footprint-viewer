@@ -247,9 +247,10 @@ function render(pts) {
   if (showRoute) routeLayer.addTo(map);
   if (showHeat)  heatLayer.addTo(map);
 
-  // Fit to filtered points (the selected time window)
-  const filteredBounds = L.latLngBounds(pts.map(p=>[p.lat,p.lon]));
-  map.fitBounds(filteredBounds, {padding:[20,20]});
+  // Fit only to timestamped points (timestamp-less points are spread everywhere)
+  const boundsSource = pts.filter(p => p.ts);
+  const boundsPoints = boundsSource.length ? boundsSource : pts;
+  map.fitBounds(L.latLngBounds(boundsPoints.map(p=>[p.lat,p.lon])), {padding:[20,20]});
 
   buildMarkers(pts, currentInterval);
   updateStats(pts);
