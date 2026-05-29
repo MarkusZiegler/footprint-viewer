@@ -143,7 +143,8 @@ let allParsedPoints = [];
 let filteredPoints  = [];
 let routeLayer = null, heatLayer = null, markersLayer = null;
 let showRoute = true, showHeat = true, currentMap = 'dark';
-let fullBounds = null;   // bounds of ALL loaded points, never changes on filter
+let fullBounds = null;       // bounds of ALL loaded points
+let filteredBounds = null;  // bounds of current time window (timestamped pts only)
 let filterSheetOpen = false;
 let currentInterval = 0;
 
@@ -247,10 +248,10 @@ function render(pts) {
   if (showRoute) routeLayer.addTo(map);
   if (showHeat)  heatLayer.addTo(map);
 
-  // Fit only to timestamped points (timestamp-less points are spread everywhere)
   const boundsSource = pts.filter(p => p.ts);
   const boundsPoints = boundsSource.length ? boundsSource : pts;
-  map.fitBounds(L.latLngBounds(boundsPoints.map(p=>[p.lat,p.lon])), {padding:[20,20]});
+  filteredBounds = L.latLngBounds(boundsPoints.map(p=>[p.lat,p.lon]));
+  map.fitBounds(filteredBounds, {padding:[20,20]});
 
   buildMarkers(pts, currentInterval);
   updateStats(pts);
@@ -324,8 +325,8 @@ document.getElementById('btnLoad').onclick = () => fileInput.click();
 document.getElementById('btnLoadOverlay').onclick = () => fileInput.click();
 document.getElementById('fileInput').addEventListener('change', e => { loadFiles(e.target.files); e.target.value=''; });
 
-// FIT: always use fullBounds
-document.getElementById('btnFit').onclick = () => { if (fullBounds) map.fitBounds(fullBounds, {padding:[20,20]}); };
+// FIT: zoom to current time window
+document.getElementById('btnFit').onclick = () => { if (filteredBounds) map.fitBounds(filteredBounds, {padding:[20,20]}); };
 
 document.getElementById('btnRoute').onclick = function() {
   showRoute=!showRoute; this.classList.toggle('active',showRoute);
