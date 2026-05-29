@@ -343,7 +343,7 @@ function applyFilter() {
   let pts = allParsedPoints;
   if (from) pts = pts.filter(p => !p.ts || p.ts >= from);
   if (to)   pts = pts.filter(p => !p.ts || p.ts <= to);
-  document.getElementById('filterBadge').classList.toggle('show', !!(from||to));
+  document.getElementById('filterBadge') && document.getElementById('filterBadge').classList.toggle('show', !!(from||to));
   render(pts);
 }
 
