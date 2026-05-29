@@ -83,6 +83,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 .leaflet-control-zoom a{background:var(--panel) !important;color:var(--text) !important;border:1px solid var(--border) !important;border-radius:8px !important;width:36px !important;height:36px !important;line-height:36px !important;font-size:18px !important;margin-bottom:4px !important}
 .leaflet-control-attribution{background:rgba(13,13,15,.7) !important;color:#555 !important;font-size:9px !important}
 .leaflet-control-attribution a{color:#666 !important}
+.stat-btn{cursor:pointer;position:relative}
+.stat-btn:active{background:#1e1e20}
+.stat-btn .stat-val{color:var(--accent)}
+.stat-btn .stat-label{color:var(--accent);opacity:.7}
 .filter-active-badge{display:none;background:var(--accent2);color:#fff;font-family:'DM Mono',monospace;font-size:9px;border-radius:4px;padding:2px 5px;margin-left:4px;vertical-align:middle}
 .filter-active-badge.show{display:inline}
 </style>
@@ -94,9 +98,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
   <div class="logo">Footprint <span>/ Viewer</span></div>
   <div class="header-actions">
     <button class="btn btn-ghost btn-icon" id="btnFit" style="display:none">⊡</button>
-    <button class="btn btn-ghost" id="btnFilter" style="display:none">
-      Filter<span class="filter-active-badge" id="filterBadge">ON</span>
-    </button>
     <button class="btn btn-primary" id="btnLoad">GPX laden</button>
   </div>
 </header>
@@ -130,7 +131,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
     <div class="stat"><span class="stat-val" id="statDist">—</span><span class="stat-label">km</span></div>
     <div class="stat"><span class="stat-val" id="statPoints">—</span><span class="stat-label">Punkte</span></div>
     <div class="stat"><span class="stat-val" id="statDays">—</span><span class="stat-label">Tage</span></div>
-    <div class="stat"><span class="stat-val" id="statRange">—</span><span class="stat-label">Zeitraum</span></div>
+    <div class="stat stat-btn" id="statFilterBtn" style="display:none">
+      <span class="stat-val" id="statRangeDate">—</span>
+      <span class="stat-label" id="statRangeTime">Zeitraum ›</span>
+    </div>
   </div>
 </div>
 
@@ -291,11 +295,24 @@ function updateStats(pts) {
   const days  = new Set(tsPts.map(p=>new Date(p.ts).toDateString())).size;
   const minTs = tsPts.length ? Math.min(...tsPts.map(p=>p.ts)) : null;
   const maxTs = tsPts.length ? Math.max(...tsPts.map(p=>p.ts)) : null;
-  const fmt   = ts => new Date(ts).toLocaleDateString('de',{year:'2-digit',month:'short'});
   document.getElementById('statDist').textContent   = dist>0 ? Math.round(dist).toLocaleString('de') : '—';
   document.getElementById('statPoints').textContent = pts.length.toLocaleString('de');
   document.getElementById('statDays').textContent   = days>0 ? days : '—';
-  document.getElementById('statRange').textContent  = minTs ? fmt(minTs)+'–'+fmt(maxTs) : '—';
+
+  if (minTs && maxTs) {
+    const fmtDate = ts => new Date(ts).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',timeZone:'Europe/Berlin'});
+    const fmtTime = ts => new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
+    const sameDay = fmtDate(minTs) === fmtDate(maxTs);
+    document.getElementById('statRangeDate').textContent = sameDay
+      ? fmtDate(minTs)
+      : fmtDate(minTs) + ' – ' + fmtDate(maxTs);
+    document.getElementById('statRangeTime').textContent = sameDay
+      ? fmtTime(minTs) + ' – ' + fmtTime(maxTs) + ' ›'
+      : '›';
+  } else {
+    document.getElementById('statRangeDate').textContent = '—';
+    document.getElementById('statRangeTime').textContent = 'Zeitraum ›';
+  }
 }
 
 // ── TIMESTAMP HELPERS ─────────────────────────────────────────────────────
@@ -354,7 +371,7 @@ async function loadFiles(files) {
   document.getElementById('dropOverlay').classList.add('hidden');
   document.getElementById('bottomPanel').style.display = '';
   document.getElementById('btnFit').style.display = '';
-  document.getElementById('btnFilter').style.display = '';
+  document.getElementById('statFilterBtn').style.display = '';
   showToast(`✓ ${newPts.length.toLocaleString('de')} Punkte geladen`);
 }
 
@@ -397,11 +414,22 @@ document.getElementById('btnMapOSM').onclick = function() {
   applyTheme();
 };
 
-// Filter sheet
-document.getElementById('btnFilter').onclick = () => {
+// Stat button opens filter
+document.getElementById('statFilterBtn').onclick = () => {
   filterSheetOpen=!filterSheetOpen;
   document.getElementById('filterSheet').classList.toggle('open',filterSheetOpen);
 };
+
+// Auto-sync: when Von changes, push Bis to same day 23:59 if Bis < Von
+document.getElementById('datetimeFrom').addEventListener('change', function() {
+  const fromVal = this.value;
+  const toVal   = document.getElementById('datetimeTo').value;
+  if (!fromVal) return;
+  if (!toVal || toVal < fromVal) {
+    // Set Bis to same date at 23:59
+    document.getElementById('datetimeTo').value = fromVal.slice(0,10) + 'T23:59';
+  }
+});
 document.getElementById('btnFilterApply').onclick = () => { applyFilter(); closeFilter(); };
 document.getElementById('btnFilterReset').onclick = () => {
   const tsPts = allParsedPoints.filter(p=>p.ts);
