@@ -9,10 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;600&display=swap');
-:root {
-  --bg:#0d0d0f; --panel:#161618; --border:#2a2a2e;
-  --accent:#e8ff47; --accent2:#ff6b35; --text:#f0f0ec; --muted:#888880;
-}
+:root{--bg:#0d0d0f;--panel:#161618;--border:#2a2a2e;--accent:#e8ff47;--accent2:#ff6b35;--text:#f0f0ec;--muted:#888880}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 
@@ -35,8 +32,12 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 .bottom-panel{background:var(--panel);border-top:1px solid var(--border);z-index:1000;flex-shrink:0}
 .controls-row{display:flex;align-items:center;gap:8px;padding:10px 12px;overflow-x:auto;scrollbar-width:none}
 .controls-row::-webkit-scrollbar{display:none}
-.layer-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;margin-right:2px}
+.layer-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap;flex-shrink:0}
 .divider{width:1px;height:20px;background:var(--border);flex-shrink:0}
+
+/* INTERVAL SELECT */
+.styled-select{font-family:'DM Mono',monospace;font-size:11px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;background:var(--border);color:var(--muted);border:none;border-radius:8px;padding:8px 10px;cursor:pointer;-webkit-appearance:none;appearance:none;outline:none}
+.styled-select.active{background:#2a2a1a;color:var(--accent);border:1px solid var(--accent)}
 
 .stats-bar{display:flex;border-top:1px solid var(--border)}
 .stat{flex:1;padding:9px 6px;text-align:center;border-right:1px solid var(--border)}
@@ -45,14 +46,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 .stat-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-top:3px}
 
 /* FILTER SHEET */
-.filter-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--panel);border-top:2px solid var(--accent);z-index:2000;padding:16px;transform:translateY(100%);transition:transform .25s ease;border-radius:16px 16px 0 0}
+.filter-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--panel);border-top:2px solid var(--accent);z-index:2000;padding:16px 16px 24px;transform:translateY(100%);transition:transform .25s ease;border-radius:16px 16px 0 0}
 .filter-sheet.open{transform:translateY(0)}
 .filter-title{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px}
-.filter-row{display:flex;gap:10px;margin-bottom:12px;align-items:center}
-.filter-row label{font-size:11px;color:var(--muted);width:28px;flex-shrink:0}
-.date-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;font-family:'DM Mono',monospace;font-size:13px;-webkit-appearance:none}
-.date-input:focus{outline:none;border-color:var(--accent)}
-.filter-actions{display:flex;gap:8px;margin-top:4px}
+.filter-row{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+.filter-row label{font-size:11px;color:var(--muted);width:28px;flex-shrink:0;font-family:'DM Mono',monospace}
+.date-input,.time-input{background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 10px;font-family:'DM Mono',monospace;font-size:13px;-webkit-appearance:none;outline:none}
+.date-input{flex:1.6}
+.time-input{flex:1;min-width:0}
+.date-input:focus,.time-input:focus{border-color:var(--accent)}
+.filter-actions{display:flex;gap:8px;margin-top:8px}
 .filter-actions .btn{flex:1;padding:12px}
 
 /* DROP OVERLAY */
@@ -64,26 +67,27 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 .drop-sub{font-size:13px;color:var(--muted);text-align:center;max-width:260px;line-height:1.5}
 .drop-btn{margin-top:8px;font-size:14px;padding:14px 28px;border-radius:12px}
 
-/* LOADING */
 .loading-bar{position:absolute;top:0;left:0;height:3px;background:var(--accent);width:0%;z-index:4000;transition:width .3s ease;box-shadow:0 0 8px var(--accent)}
-
-/* TOAST */
 .toast{position:absolute;bottom:140px;left:50%;transform:translateX(-50%) translateY(20px);background:#1e1e20;border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-size:13px;color:var(--text);z-index:5000;opacity:0;transition:all .25s ease;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-/* TIME POPUP override */
-.leaflet-popup-content-wrapper{background:var(--panel) !important;border:1px solid var(--border) !important;border-radius:10px !important;box-shadow:0 4px 20px rgba(0,0,0,.5) !important;color:var(--text) !important}
-.leaflet-popup-tip{background:var(--panel) !important}
-.leaflet-popup-content{font-family:'DM Mono',monospace;font-size:12px;margin:10px 14px !important;line-height:1.6}
-.popup-time{color:var(--accent);font-size:14px;font-weight:500}
-.popup-label{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+/* TIME MARKER LABELS */
+.time-marker-label{
+  font-family:'DM Mono',monospace;font-size:10px;font-weight:500;
+  background:rgba(13,13,15,.85);color:#e8ff47;
+  border:1px solid #e8ff47;border-radius:5px;
+  padding:2px 5px;white-space:nowrap;
+  pointer-events:none;
+  backdrop-filter:blur(2px);
+  transform:translate(-50%, -100%);
+  margin-top:-6px;
+}
 
-/* Leaflet controls */
+/* Leaflet overrides */
 .leaflet-control-zoom{border:none !important;box-shadow:none !important}
 .leaflet-control-zoom a{background:var(--panel) !important;color:var(--text) !important;border:1px solid var(--border) !important;border-radius:8px !important;width:36px !important;height:36px !important;line-height:36px !important;font-size:18px !important;margin-bottom:4px !important}
 .leaflet-control-attribution{background:rgba(13,13,15,.7) !important;color:#555 !important;font-size:9px !important}
 .leaflet-control-attribution a{color:#666 !important}
-
 .filter-active-badge{display:none;background:var(--accent2);color:#fff;font-family:'DM Mono',monospace;font-size:9px;border-radius:4px;padding:2px 5px;margin-left:4px;vertical-align:middle}
 .filter-active-badge.show{display:inline}
 </style>
@@ -95,7 +99,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 <header>
   <div class="logo">Footprint <span>/ Viewer</span></div>
   <div class="header-actions">
-    <button class="btn btn-ghost btn-icon" id="btnFit" style="display:none" title="Einpassen">⊡</button>
+    <button class="btn btn-ghost btn-icon" id="btnFit" style="display:none">⊡</button>
     <button class="btn btn-ghost" id="btnFilter" style="display:none">
       Filter<span class="filter-active-badge" id="filterBadge">ON</span>
     </button>
@@ -105,7 +109,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 
 <div id="map"></div>
 
-<!-- EMPTY OVERLAY -->
 <div class="drop-overlay" id="dropOverlay">
   <div class="drop-icon">🗺️</div>
   <div class="drop-title">Deine Wege</div>
@@ -113,12 +116,19 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
   <button class="btn btn-primary drop-btn" id="btnLoadOverlay">GPX-Datei wählen</button>
 </div>
 
-<!-- BOTTOM PANEL -->
 <div class="bottom-panel" id="bottomPanel" style="display:none">
   <div class="controls-row">
     <span class="layer-label">Layer</span>
     <button class="btn btn-ghost active" id="btnRoute">🛤 Route</button>
     <button class="btn btn-ghost active" id="btnHeat">🔥 Heatmap</button>
+    <div class="divider"></div>
+    <span class="layer-label">Zeit</span>
+    <select class="styled-select" id="selectInterval">
+      <option value="0">— Aus —</option>
+      <option value="10">10 Min</option>
+      <option value="30">30 Min</option>
+      <option value="60">1 Std</option>
+    </select>
     <div class="divider"></div>
     <span class="layer-label">Karte</span>
     <button class="btn btn-ghost active" id="btnMapDark">Dunkel</button>
@@ -138,10 +148,12 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
   <div class="filter-row">
     <label>Von</label>
     <input type="date" class="date-input" id="dateFrom">
+    <input type="time" class="time-input" id="timeFrom" value="00:00">
   </div>
   <div class="filter-row">
     <label>Bis</label>
     <input type="date" class="date-input" id="dateTo">
+    <input type="time" class="time-input" id="timeTo" value="23:59">
   </div>
   <div class="filter-actions">
     <button class="btn btn-ghost" id="btnFilterReset">Zurücksetzen</button>
@@ -155,19 +167,20 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 // ── MAP ───────────────────────────────────────────────────────────────────
 const darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   {attribution:'© OpenStreetMap, © CARTO',subdomains:'abcd',maxZoom:20});
-const osmTile  = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+const osmTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   {attribution:'© OpenStreetMap contributors',maxZoom:20});
-
 const map = L.map('map',{center:[48.137,11.576],zoom:11,zoomControl:true,layers:[darkTile]});
 
 // ── STATE ─────────────────────────────────────────────────────────────────
-let allParsedPoints = [];   // full dataset [{lat,lon,ts}]
-let filteredPoints  = [];   // after date filter
-let routeLayer = null, heatLayer = null;
-let showRoute = true, showHeat = true, currentMap = 'dark';
+let allParsedPoints = [];
+let filteredPoints  = [];
+let routeLayer = null, heatLayer = null, markersLayer = null;
+let showRoute = true, showHeat = true;
+let currentMap = 'dark';
 let allBounds = null;
 let filterFrom = null, filterTo = null;
 let filterSheetOpen = false;
+let currentInterval = 0; // minutes
 
 // ── GPX PARSER ────────────────────────────────────────────────────────────
 function parseGPX(text) {
@@ -185,21 +198,85 @@ function parseGPX(text) {
   return pts;
 }
 
-// ── DECIMATION (Douglas-Peucker light) ────────────────────────────────────
 function decimate(pts, maxPts) {
   if (pts.length <= maxPts) return pts;
   const step = Math.ceil(pts.length / maxPts);
-  return pts.filter((_, i) => i % step === 0);
+  return pts.filter((_,i) => i % step === 0);
 }
 
-// ── HAVERSINE ─────────────────────────────────────────────────────────────
 function haversine(a, b) {
-  const R = 6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lon-a.lon)*Math.PI/180;
-  const s = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+  const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLon=(b.lon-a.lon)*Math.PI/180;
+  const s=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLon/2)**2;
   return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
 }
 function totalDistance(pts) {
   let d=0; for(let i=1;i<pts.length;i++) d+=haversine(pts[i-1],pts[i]); return d;
+}
+
+// ── FORMAT TIME (Berlin) ──────────────────────────────────────────────────
+function fmtTime(ts) {
+  return new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
+}
+function fmtDateTime(ts) {
+  return new Date(ts).toLocaleString('de-DE',{
+    weekday:'short',day:'2-digit',month:'short',year:'numeric',
+    hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'Europe/Berlin'
+  });
+}
+
+// ── TIME MARKERS ──────────────────────────────────────────────────────────
+function buildMarkers(pts, intervalMin) {
+  if (markersLayer) { map.removeLayer(markersLayer); markersLayer = null; }
+  if (!intervalMin || !pts.length) return;
+
+  const tsPts = pts.filter(p => p.ts).sort((a,b) => a.ts - b.ts);
+  if (!tsPts.length) return;
+
+  const intervalMs = intervalMin * 60 * 1000;
+  const start = tsPts[0].ts;
+  const end   = tsPts[tsPts.length-1].ts;
+
+  // Generate target timestamps at regular intervals
+  const targets = [];
+  for (let t = start; t <= end; t += intervalMs) targets.push(t);
+
+  // For each target, find nearest point in time
+  const markers = [];
+  const used = new Set();
+  targets.forEach(target => {
+    let best = null, bestD = Infinity;
+    tsPts.forEach((p, i) => {
+      const d = Math.abs(p.ts - target);
+      if (d < bestD) { bestD = d; best = {p, i}; }
+    });
+    // Only use if within half the interval and not already used
+    if (best && bestD < intervalMs * 0.5 && !used.has(best.i)) {
+      used.add(best.i);
+      markers.push(best.p);
+    }
+  });
+
+  markersLayer = L.layerGroup();
+  markers.forEach(p => {
+    // Dot
+    L.circleMarker([p.lat, p.lon], {
+      radius: 4,
+      fillColor: '#e8ff47',
+      fillOpacity: 1,
+      color: '#0d0d0f',
+      weight: 1.5
+    }).addTo(markersLayer);
+
+    // Time label as divIcon
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="time-marker-label">${fmtTime(p.ts)}</div>`,
+      iconAnchor: [0, 0]
+    });
+    L.marker([p.lat, p.lon], {icon, interactive: false}).addTo(markersLayer);
+  });
+
+  markersLayer.addTo(map);
 }
 
 // ── RENDER ────────────────────────────────────────────────────────────────
@@ -207,115 +284,96 @@ function render(pts) {
   filteredPoints = pts;
   if (routeLayer) map.removeLayer(routeLayer);
   if (heatLayer)  map.removeLayer(heatLayer);
+  if (markersLayer) { map.removeLayer(markersLayer); markersLayer = null; }
 
-  if (pts.length === 0) { updateStats([]); return; }
+  if (!pts.length) { updateStats([]); return; }
 
-  // Route – decimate for performance
   const routePts = decimate(pts, 6000);
   routeLayer = L.polyline(routePts.map(p=>[p.lat,p.lon]), {
     color:'#e8ff47', weight:1.5, opacity:.6, smoothFactor:1.5
   });
-
-  // Heatmap – all points
   heatLayer = L.heatLayer(pts.map(p=>[p.lat,p.lon,1]), {
     radius:18, blur:22, maxZoom:17,
-    gradient:{0.0:'#1a1aff',0.3:'#00ccff',0.6:'#ff6b35',1.0:'#e8ff47'}
+    gradient:{'0.0':'#1a1aff','0.3':'#00ccff','0.6':'#ff6b35','1.0':'#e8ff47'}
   });
 
   if (showRoute) routeLayer.addTo(map);
   if (showHeat)  heatLayer.addTo(map);
 
-  const bounds = L.latLngBounds(pts.map(p=>[p.lat,p.lon]));
-  allBounds = bounds;
-  map.fitBounds(bounds, {padding:[20,20]});
+  allBounds = L.latLngBounds(pts.map(p=>[p.lat,p.lon]));
+  map.fitBounds(allBounds, {padding:[20,20]});
+
+  buildMarkers(pts, currentInterval);
   updateStats(pts);
 }
 
 function updateStats(pts) {
-  const dist  = totalDistance(pts);
+  const dist = totalDistance(pts);
   const tsPts = pts.filter(p=>p.ts);
-  const days  = new Set(tsPts.map(p=>new Date(p.ts).toDateString())).size;
+  const days = new Set(tsPts.map(p=>new Date(p.ts).toDateString())).size;
   const minTs = tsPts.length ? Math.min(...tsPts.map(p=>p.ts)) : null;
   const maxTs = tsPts.length ? Math.max(...tsPts.map(p=>p.ts)) : null;
   const fmt = ts => new Date(ts).toLocaleDateString('de',{year:'2-digit',month:'short'});
-
   document.getElementById('statDist').textContent   = dist>0 ? Math.round(dist).toLocaleString('de') : '—';
   document.getElementById('statPoints').textContent = pts.length.toLocaleString('de');
-  document.getElementById('statDays').textContent   = days>0 ? days.toLocaleString('de') : '—';
+  document.getElementById('statDays').textContent   = days>0 ? days : '—';
   document.getElementById('statRange').textContent  = minTs ? fmt(minTs)+'–'+fmt(maxTs) : '—';
 }
 
 // ── FILTER ────────────────────────────────────────────────────────────────
+function buildTimestamp(dateStr, timeStr) {
+  if (!dateStr) return null;
+  const t = timeStr || '00:00';
+  // Parse as local Berlin time
+  const [y,m,d] = dateStr.split('-').map(Number);
+  const [hh,mm] = t.split(':').map(Number);
+  // Use a formatter trick: build ISO and offset
+  const dt = new Date(`${dateStr}T${t.padStart(5,'0')}:00`);
+  // Adjust for Berlin timezone offset vs UTC
+  const berlinOffset = new Date(dt).toLocaleString('en',{timeZone:'Europe/Berlin',timeZoneName:'shortOffset'})
+    .match(/GMT([+-]\d+)/)?.[1];
+  const offsetH = berlinOffset ? parseInt(berlinOffset) : 1;
+  return dt.getTime() - offsetH * 3600000;
+}
+
 function applyFilter() {
-  const from = filterFrom ? new Date(filterFrom).setHours(0,0,0,0) : null;
-  const to   = filterTo   ? new Date(filterTo).setHours(23,59,59,999) : null;
+  const from = buildTimestamp(document.getElementById('dateFrom').value, document.getElementById('timeFrom').value);
+  const to   = buildTimestamp(document.getElementById('dateTo').value,   document.getElementById('timeTo').value);
+  // 'to' should be end of the minute
+  const toAdj = to ? to + 59999 : null;
   let pts = allParsedPoints;
-  if (from) pts = pts.filter(p => p.ts && p.ts >= from);
-  if (to)   pts = pts.filter(p => p.ts && p.ts <= to);
+  if (from)  pts = pts.filter(p => p.ts && p.ts >= from);
+  if (toAdj) pts = pts.filter(p => p.ts && p.ts <= toAdj);
+  const isFiltered = !!(from || toAdj);
+  document.getElementById('filterBadge').classList.toggle('show', isFiltered);
   render(pts);
-  document.getElementById('filterBadge').classList.toggle('show', !!(from||to));
 }
-
-// ── NEAREST POINT LOOKUP ──────────────────────────────────────────────────
-function findNearest(latlng) {
-  const pts = filteredPoints.filter(p=>p.ts);
-  if (!pts.length) return null;
-  let best=null, bestD=Infinity;
-  // Search within current map view first for speed
-  const bounds = map.getBounds().pad(0.1);
-  const inView = pts.filter(p=>bounds.contains([p.lat,p.lon]));
-  const search = inView.length > 0 ? inView : pts;
-  search.forEach(p=>{
-    const d = (p.lat-latlng.lat)**2 + (p.lon-latlng.lng)**2;
-    if(d<bestD){bestD=d;best=p;}
-  });
-  return best;
-}
-
-function formatLocalTime(ts) {
-  const d = new Date(ts);
-  const date = d.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Berlin'});
-  const time = d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'Europe/Berlin'});
-  return {date, time};
-}
-
-map.on('click', e => {
-  const pt = findNearest(e.latlng);
-  if (!pt) return;
-  const {date, time} = formatLocalTime(pt.ts);
-  L.popup({closeButton:true, maxWidth:220})
-    .setLatLng([pt.lat, pt.lon])
-    .setContent(`
-      <div class="popup-label">Aufzeichnung</div>
-      <div class="popup-time">${time}</div>
-      <div style="color:var(--muted);font-size:11px;margin-top:2px">${date}</div>
-      <div style="color:var(--border);font-size:10px;margin-top:4px">
-        ${pt.lat.toFixed(5)}, ${pt.lon.toFixed(5)}
-      </div>`)
-    .openOn(map);
-});
 
 // ── FILE LOADING ──────────────────────────────────────────────────────────
 async function loadFiles(files) {
-  if(!files||!files.length) return;
+  if (!files || !files.length) return;
   setLoading(true);
   let newPts = [];
-  for(const file of files) {
+  for (const file of files) {
     const text = await file.text();
     newPts.push(...parseGPX(text));
   }
   setLoading(false);
-  if(!newPts.length){showToast('⚠️ Keine GPS-Punkte gefunden');return;}
+  if (!newPts.length) { showToast('⚠️ Keine GPS-Punkte gefunden'); return; }
 
   allParsedPoints = [...allParsedPoints, ...newPts];
 
-  // Set default date range in filter inputs
+  // Set default date/time range
   const tsPts = allParsedPoints.filter(p=>p.ts);
-  if(tsPts.length){
+  if (tsPts.length) {
     const minTs = Math.min(...tsPts.map(p=>p.ts));
     const maxTs = Math.max(...tsPts.map(p=>p.ts));
-    document.getElementById('dateFrom').value = new Date(minTs).toISOString().slice(0,10);
-    document.getElementById('dateTo').value   = new Date(maxTs).toISOString().slice(0,10);
+    const toDate = d => new Date(d).toLocaleDateString('sv',{timeZone:'Europe/Berlin'});
+    const toTime = d => new Date(d).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).replace(':','');
+    document.getElementById('dateFrom').value = toDate(minTs);
+    document.getElementById('dateTo').value   = toDate(maxTs);
+    document.getElementById('timeFrom').value = '00:00';
+    document.getElementById('timeTo').value   = '23:59';
   }
 
   applyFilter();
@@ -326,74 +384,83 @@ async function loadFiles(files) {
   showToast(`✓ ${newPts.length.toLocaleString('de')} Punkte geladen`);
 }
 
-// ── UI CONTROLS ───────────────────────────────────────────────────────────
-document.getElementById('btnLoad').onclick = ()=>fileInput.click();
-document.getElementById('btnLoadOverlay').onclick = ()=>fileInput.click();
-document.getElementById('fileInput').addEventListener('change', e=>{loadFiles(e.target.files);e.target.value='';});
-document.getElementById('btnFit').onclick = ()=>{ if(allBounds) map.fitBounds(allBounds,{padding:[20,20]}); };
+// ── CONTROLS ─────────────────────────────────────────────────────────────
+document.getElementById('btnLoad').onclick = () => fileInput.click();
+document.getElementById('btnLoadOverlay').onclick = () => fileInput.click();
+document.getElementById('fileInput').addEventListener('change', e => { loadFiles(e.target.files); e.target.value=''; });
+document.getElementById('btnFit').onclick = () => { if (allBounds) map.fitBounds(allBounds, {padding:[20,20]}); };
 
-document.getElementById('btnRoute').onclick = function(){
-  showRoute=!showRoute; this.classList.toggle('active',showRoute);
-  if(routeLayer){ showRoute?routeLayer.addTo(map):map.removeLayer(routeLayer); }
+document.getElementById('btnRoute').onclick = function() {
+  showRoute = !showRoute; this.classList.toggle('active', showRoute);
+  if (routeLayer) showRoute ? routeLayer.addTo(map) : map.removeLayer(routeLayer);
 };
-document.getElementById('btnHeat').onclick = function(){
-  showHeat=!showHeat; this.classList.toggle('active',showHeat);
-  if(heatLayer){ showHeat?heatLayer.addTo(map):map.removeLayer(heatLayer); }
+document.getElementById('btnHeat').onclick = function() {
+  showHeat = !showHeat; this.classList.toggle('active', showHeat);
+  if (heatLayer) showHeat ? heatLayer.addTo(map) : map.removeLayer(heatLayer);
 };
-document.getElementById('btnMapDark').onclick = function(){
-  if(currentMap==='dark') return;
+
+// Interval selector
+document.getElementById('selectInterval').addEventListener('change', function() {
+  currentInterval = parseInt(this.value);
+  this.classList.toggle('active', currentInterval > 0);
+  buildMarkers(filteredPoints, currentInterval);
+});
+
+document.getElementById('btnMapDark').onclick = function() {
+  if (currentMap==='dark') return;
   map.removeLayer(osmTile); darkTile.addTo(map); darkTile.bringToBack();
   currentMap='dark'; this.classList.add('active');
   document.getElementById('btnMapOSM').classList.remove('active');
 };
-document.getElementById('btnMapOSM').onclick = function(){
-  if(currentMap==='osm') return;
+document.getElementById('btnMapOSM').onclick = function() {
+  if (currentMap==='osm') return;
   map.removeLayer(darkTile); osmTile.addTo(map); osmTile.bringToBack();
   currentMap='osm'; this.classList.add('active');
   document.getElementById('btnMapDark').classList.remove('active');
 };
 
 // Filter sheet
-document.getElementById('btnFilter').onclick = ()=>{
+document.getElementById('btnFilter').onclick = () => {
   filterSheetOpen = !filterSheetOpen;
   document.getElementById('filterSheet').classList.toggle('open', filterSheetOpen);
 };
-document.getElementById('btnFilterApply').onclick = ()=>{
-  filterFrom = document.getElementById('dateFrom').value;
-  filterTo   = document.getElementById('dateTo').value;
+document.getElementById('btnFilterApply').onclick = () => {
   applyFilter();
-  filterSheetOpen=false;
+  filterSheetOpen = false;
   document.getElementById('filterSheet').classList.remove('open');
-  showToast('Filter angewendet');
 };
-document.getElementById('btnFilterReset').onclick = ()=>{
-  filterFrom=filterTo=null;
-  const tsPts=allParsedPoints.filter(p=>p.ts);
-  if(tsPts.length){
-    document.getElementById('dateFrom').value=new Date(Math.min(...tsPts.map(p=>p.ts))).toISOString().slice(0,10);
-    document.getElementById('dateTo').value=new Date(Math.max(...tsPts.map(p=>p.ts))).toISOString().slice(0,10);
+document.getElementById('btnFilterReset').onclick = () => {
+  const tsPts = allParsedPoints.filter(p=>p.ts);
+  if (tsPts.length) {
+    const minTs = Math.min(...tsPts.map(p=>p.ts));
+    const maxTs = Math.max(...tsPts.map(p=>p.ts));
+    const toDate = d => new Date(d).toLocaleDateString('sv',{timeZone:'Europe/Berlin'});
+    document.getElementById('dateFrom').value = toDate(minTs);
+    document.getElementById('dateTo').value   = toDate(maxTs);
+    document.getElementById('timeFrom').value = '00:00';
+    document.getElementById('timeTo').value   = '23:59';
   }
   applyFilter();
-  filterSheetOpen=false;
+  filterSheetOpen = false;
   document.getElementById('filterSheet').classList.remove('open');
-  document.getElementById('filterBadge').classList.remove('show');
 };
 
-// Close filter on map tap
-map.on('click', ()=>{ if(filterSheetOpen){filterSheetOpen=false;document.getElementById('filterSheet').classList.remove('open');} });
+map.on('click', () => {
+  if (filterSheetOpen) { filterSheetOpen=false; document.getElementById('filterSheet').classList.remove('open'); }
+});
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
-function setLoading(on){
-  document.getElementById('loadingBar').style.width=on?'85%':'100%';
-  if(!on) setTimeout(()=>document.getElementById('loadingBar').style.width='0%',400);
+function setLoading(on) {
+  document.getElementById('loadingBar').style.width = on ? '85%' : '100%';
+  if (!on) setTimeout(() => document.getElementById('loadingBar').style.width='0%', 400);
 }
-function showToast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
 }
-document.addEventListener('dragover',e=>e.preventDefault());
-document.addEventListener('drop',e=>{e.preventDefault();loadFiles(e.dataTransfer.files);});
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { e.preventDefault(); loadFiles(e.dataTransfer.files); });
 </script>
 </body>
 </html>
