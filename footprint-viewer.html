@@ -247,8 +247,9 @@ function render(pts) {
   if (showRoute) routeLayer.addTo(map);
   if (showHeat)  heatLayer.addTo(map);
 
-  // FIX: always fit to FULL bounds (all loaded points), not filtered subset
-  if (fullBounds) map.fitBounds(fullBounds, {padding:[20,20]});
+  // Fit to filtered points (the selected time window)
+  const filteredBounds = L.latLngBounds(pts.map(p=>[p.lat,p.lon]));
+  map.fitBounds(filteredBounds, {padding:[20,20]});
 
   buildMarkers(pts, currentInterval);
   updateStats(pts);
