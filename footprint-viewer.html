@@ -82,6 +82,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 /* Leaflet */
 .leaflet-control-zoom{border:none !important;box-shadow:none !important}
 .leaflet-control-zoom a{background:var(--panel) !important;color:var(--text) !important;border:1px solid var(--border) !important;border-radius:8px !important;width:36px !important;height:36px !important;line-height:36px !important;font-size:18px !important;margin-bottom:4px !important}
+.leaflet-control-fit{margin-top:0 !important}
+.leaflet-control-fit a{background:var(--panel) !important;color:var(--text) !important;border:1px solid var(--border) !important;border-radius:8px !important;width:36px !important;height:36px !important;line-height:36px !important;font-size:18px !important;display:flex;align-items:center;justify-content:center;text-decoration:none}
+.leaflet-control-fit a:active{opacity:.7}
+.leaflet-control-fit.hidden{display:none}
 .leaflet-control-attribution{background:rgba(13,13,15,.7) !important;color:#555 !important;font-size:9px !important}
 .leaflet-control-attribution a{color:#666 !important}
 .stat-btn{cursor:pointer;position:relative}
@@ -98,7 +102,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 <header>
   <div class="logo">Footprint <span>/ Viewer</span></div>
   <div class="header-actions">
-    <button class="btn btn-ghost btn-icon" id="btnFit" style="display:none">⊡</button>
     <button class="btn btn-primary" id="btnLoad">GPX laden</button>
   </div>
 </header>
@@ -172,6 +175,16 @@ const darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}
 const osmTile = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   {attribution:'© OpenStreetMap contributors',maxZoom:20});
 const map = L.map('map',{center:[48.137,11.576],zoom:11,zoomControl:true,layers:[darkTile]});
+
+// Fit-to-bounds button, stacked under the zoom control
+const fitControl = L.control({position:'topleft'});
+fitControl.onAdd = function() {
+  const div = L.DomUtil.create('div','leaflet-bar leaflet-control-fit hidden');
+  div.innerHTML = '<a href="#" id="btnFit" title="Alle Punkte anzeigen">⊡</a>';
+  L.DomEvent.disableClickPropagation(div);
+  return div;
+};
+fitControl.addTo(map);
 
 // ── STATE ─────────────────────────────────────────────────────────────────
 let allParsedPoints = [], filteredPoints = [];
@@ -386,7 +399,7 @@ async function loadFiles(files) {
   applyFilter();
   document.getElementById('dropOverlay').classList.add('hidden');
   document.getElementById('bottomPanel').style.display = '';
-  document.getElementById('btnFit').style.display = '';
+  document.querySelector('.leaflet-control-fit').classList.remove('hidden');
   document.getElementById('statFilterBtn').style.display = '';
   showToast(`✓ ${newPts.length.toLocaleString('de')} Punkte geladen`);
 }
@@ -395,7 +408,8 @@ async function loadFiles(files) {
 document.getElementById('btnLoad').onclick = () => fileInput.click();
 document.getElementById('btnLoadOverlay').onclick = () => fileInput.click();
 document.getElementById('fileInput').addEventListener('change', e => { loadFiles(e.target.files); e.target.value=''; });
-document.getElementById('btnFit').onclick = () => {
+document.getElementById('btnFit').onclick = (e) => {
+  e.preventDefault();
   if (filteredBounds) {
     const panelH = document.getElementById('bottomPanel').offsetHeight || 120;
     map.fitBounds(filteredBounds, {paddingTopLeft:[20,60], paddingBottomRight:[20, panelH+20]});
