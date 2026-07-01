@@ -44,8 +44,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 .filter-title{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
 .filter-row{display:flex;gap:8px;margin-bottom:10px;align-items:center}
 .filter-row label{font-size:11px;color:var(--muted);width:28px;flex-shrink:0;font-family:'DM Mono',monospace}
-.datetime-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:11px 12px;font-family:'DM Mono',monospace;font-size:13px;-webkit-appearance:none;outline:none;min-width:0}
+.datetime-input{flex:1.4;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:11px 12px;font-family:'DM Mono',monospace;font-size:13px;-webkit-appearance:none;outline:none;min-width:0}
 .datetime-input:focus{border-color:var(--accent)}
+.datetime-input.time-input{flex:1}
 .quick-row{display:flex;gap:8px;margin-bottom:12px}
 .quick-row .btn{flex:1;padding:10px}
 .filter-actions{display:flex;gap:8px;margin-top:4px}
@@ -122,6 +123,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
       <option value="30">30 Min</option>
       <option value="60">1 Std</option>
     </select>
+    <button class="btn btn-ghost active" id="btnDateLabels">+Datum</button>
     <div class="divider"></div>
     <span class="layer-label">Karte</span>
     <button class="btn btn-ghost active" id="btnMapDark">Dunkel</button>
@@ -148,11 +150,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
   </div>
   <div class="filter-row">
     <label>Von</label>
-    <input type="datetime-local" class="datetime-input" id="datetimeFrom">
+    <input type="date" class="datetime-input" id="dateFrom">
+    <input type="time" class="datetime-input time-input" id="timeFrom">
   </div>
   <div class="filter-row">
     <label>Bis</label>
-    <input type="datetime-local" class="datetime-input" id="datetimeTo">
+    <input type="date" class="datetime-input" id="dateTo">
+    <input type="time" class="datetime-input time-input" id="timeTo">
   </div>
   <div class="filter-actions">
     <button class="btn btn-ghost" id="btnFilterReset">Zurücksetzen</button>
@@ -174,7 +178,7 @@ let allParsedPoints = [], filteredPoints = [];
 let routeLayer = null, heatLayer = null, markersLayer = null;
 let showRoute = true, showHeat = true, currentMap = 'dark';
 let fullBounds = null, filteredBounds = null;
-let filterSheetOpen = false, currentInterval = 0;
+let filterSheetOpen = false, currentInterval = 0, showDateInLabels = true;
 
 // ── GPX PARSER ────────────────────────────────────────────────────────────
 function parseGPX(text) {
@@ -228,7 +232,10 @@ function applyTheme() {
 }
 
 // ── TIME MARKERS ──────────────────────────────────────────────────────────
-function fmtTime(ts) {
+function fmtTime(ts, withDate) {
+  if (withDate) {
+    return new Date(ts).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
+  }
   return new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
 }
 
@@ -239,6 +246,8 @@ function buildMarkers(pts, intervalMin) {
   if (!tsPts.length) return;
   const intervalMs = intervalMin * 60000;
   const start = tsPts[0].ts, end = tsPts[tsPts.length-1].ts;
+  const dayOf = ts => new Date(ts).toLocaleDateString('sv',{timeZone:'Europe/Berlin'});
+  const withDate = showDateInLabels && dayOf(start) !== dayOf(end);
   const targets = [];
   for (let t=start; t<=end; t+=intervalMs) targets.push(t);
   const used = new Set(), selected = [];
@@ -256,7 +265,7 @@ function buildMarkers(pts, intervalMin) {
     // Label: iconSize [0,0] so anchor = exact dot; label floats above via CSS
     const icon = L.divIcon({
       className:'time-lbl-wrap',
-      html:`<div class="time-marker-label">${fmtTime(p.ts)}</div>`,
+      html:`<div class="time-marker-label">${fmtTime(p.ts, withDate)}</div>`,
       iconSize:[0,0],
       iconAnchor:[0,0]
     });
@@ -316,29 +325,37 @@ function updateStats(pts) {
 }
 
 // ── TIMESTAMP HELPERS ─────────────────────────────────────────────────────
-function buildTimestamp(dtLocalStr) {
-  if (!dtLocalStr) return null;
-  return new Date(dtLocalStr).getTime(); // browser interprets as local time
+function buildTimestamp(dateStr, timeStr) {
+  if (!dateStr) return null;
+  return new Date(`${dateStr}T${timeStr || '00:00'}`).getTime(); // browser interprets as local time
 }
 
-function toDateTimeLocal(ts) {
-  // Returns 'YYYY-MM-DDTHH:mm' in Berlin local time
-  const d = new Date(ts);
-  const dateStr = d.toLocaleDateString('sv', {timeZone:'Europe/Berlin'}); // 'sv' = YYYY-MM-DD
-  const timeStr = d.toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
-  return `${dateStr}T${timeStr}`;
+function toDateStr(ts) {
+  // Returns 'YYYY-MM-DD' in Berlin local time
+  return new Date(ts).toLocaleDateString('sv', {timeZone:'Europe/Berlin'});
+}
+
+function toTimeStr(ts) {
+  // Returns 'HH:mm' in Berlin local time
+  return new Date(ts).toLocaleTimeString('de-DE', {hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
+}
+
+function setDateTimeFields(fromTs, toTs) {
+  document.getElementById('dateFrom').value = toDateStr(fromTs);
+  document.getElementById('timeFrom').value = toTimeStr(fromTs);
+  document.getElementById('dateTo').value   = toDateStr(toTs);
+  document.getElementById('timeTo').value   = toTimeStr(toTs);
 }
 
 function todayRange() {
-  const now = new Date();
-  const today = now.toLocaleDateString('sv', {timeZone:'Europe/Berlin'});
-  return {from:`${today}T00:00`, to:`${today}T23:59`};
+  const today = new Date().toLocaleDateString('sv', {timeZone:'Europe/Berlin'});
+  return {dateFrom:today, timeFrom:'00:00', dateTo:today, timeTo:'23:59'};
 }
 
 // ── FILTER ────────────────────────────────────────────────────────────────
 function applyFilter() {
-  const from  = buildTimestamp(document.getElementById('datetimeFrom').value);
-  const toRaw = buildTimestamp(document.getElementById('datetimeTo').value);
+  const from  = buildTimestamp(document.getElementById('dateFrom').value, document.getElementById('timeFrom').value);
+  const toRaw = buildTimestamp(document.getElementById('dateTo').value, document.getElementById('timeTo').value);
   const to    = toRaw ? toRaw + 59999 : null;
   let pts = allParsedPoints;
   if (from) pts = pts.filter(p => !p.ts || p.ts >= from);
@@ -364,8 +381,7 @@ async function loadFiles(files) {
   fullBounds = L.latLngBounds(allParsedPoints.map(p=>[p.lat,p.lon]));
   const tsPts = allParsedPoints.filter(p=>p.ts);
   if (tsPts.length) {
-    document.getElementById('datetimeFrom').value = toDateTimeLocal(Math.min(...tsPts.map(p=>p.ts)));
-    document.getElementById('datetimeTo').value   = toDateTimeLocal(Math.max(...tsPts.map(p=>p.ts)));
+    setDateTimeFields(Math.min(...tsPts.map(p=>p.ts)), Math.max(...tsPts.map(p=>p.ts)));
   }
   applyFilter();
   document.getElementById('dropOverlay').classList.add('hidden');
@@ -399,6 +415,10 @@ document.getElementById('selectInterval').addEventListener('change', function() 
   this.classList.toggle('active',currentInterval>0);
   buildMarkers(filteredPoints,currentInterval);
 });
+document.getElementById('btnDateLabels').onclick = function() {
+  showDateInLabels=!showDateInLabels; this.classList.toggle('active',showDateInLabels);
+  buildMarkers(filteredPoints,currentInterval);
+};
 document.getElementById('btnMapDark').onclick = function() {
   if (currentMap==='dark') return;
   map.removeLayer(osmTile); darkTile.addTo(map); darkTile.bringToBack();
@@ -420,38 +440,40 @@ document.getElementById('statFilterBtn').onclick = () => {
   document.getElementById('filterSheet').classList.toggle('open',filterSheetOpen);
 };
 
-// Auto-sync: when Von changes, push Bis to same day 23:59 if Bis < Von
-document.getElementById('datetimeFrom').addEventListener('change', function() {
+// Auto-sync: when Von-Datum changes, push Bis-Datum along if Bis < Von
+document.getElementById('dateFrom').addEventListener('change', function() {
   const fromVal = this.value;
-  const toVal   = document.getElementById('datetimeTo').value;
+  const toVal   = document.getElementById('dateTo').value;
   if (!fromVal) return;
   if (!toVal || toVal < fromVal) {
-    // Set Bis to same date at 23:59
-    document.getElementById('datetimeTo').value = fromVal.slice(0,10) + 'T23:59';
+    document.getElementById('dateTo').value = fromVal;
   }
 });
 document.getElementById('btnFilterApply').onclick = () => { applyFilter(); closeFilter(); };
 document.getElementById('btnFilterReset').onclick = () => {
   const tsPts = allParsedPoints.filter(p=>p.ts);
   if (tsPts.length) {
-    document.getElementById('datetimeFrom').value = toDateTimeLocal(Math.min(...tsPts.map(p=>p.ts)));
-    document.getElementById('datetimeTo').value   = toDateTimeLocal(Math.max(...tsPts.map(p=>p.ts)));
+    setDateTimeFields(Math.min(...tsPts.map(p=>p.ts)), Math.max(...tsPts.map(p=>p.ts)));
   }
   applyFilter(); closeFilter();
 };
 
 // Quick date buttons
 document.getElementById('btnToday').onclick = () => {
-  const {from,to} = todayRange();
-  document.getElementById('datetimeFrom').value = from;
-  document.getElementById('datetimeTo').value   = to;
+  const {dateFrom,timeFrom,dateTo,timeTo} = todayRange();
+  document.getElementById('dateFrom').value = dateFrom;
+  document.getElementById('timeFrom').value = timeFrom;
+  document.getElementById('dateTo').value   = dateTo;
+  document.getElementById('timeTo').value   = timeTo;
   applyFilter(); closeFilter();
 };
 document.getElementById('btnYesterday').onclick = () => {
   const d = new Date(); d.setDate(d.getDate()-1);
   const day = d.toLocaleDateString('sv',{timeZone:'Europe/Berlin'});
-  document.getElementById('datetimeFrom').value = `${day}T00:00`;
-  document.getElementById('datetimeTo').value   = `${day}T23:59`;
+  document.getElementById('dateFrom').value = day;
+  document.getElementById('timeFrom').value = '00:00';
+  document.getElementById('dateTo').value   = day;
+  document.getElementById('timeTo').value   = '23:59';
   applyFilter(); closeFilter();
 };
 document.getElementById('btnThisWeek').onclick = () => {
@@ -460,8 +482,10 @@ document.getElementById('btnThisWeek').onclick = () => {
   const mon = new Date(now); mon.setDate(now.getDate()-day+1);
   const monStr = mon.toLocaleDateString('sv',{timeZone:'Europe/Berlin'});
   const todStr = now.toLocaleDateString('sv',{timeZone:'Europe/Berlin'});
-  document.getElementById('datetimeFrom').value = `${monStr}T00:00`;
-  document.getElementById('datetimeTo').value   = `${todStr}T23:59`;
+  document.getElementById('dateFrom').value = monStr;
+  document.getElementById('timeFrom').value = '00:00';
+  document.getElementById('dateTo').value   = todStr;
+  document.getElementById('timeTo').value   = '23:59';
   applyFilter(); closeFilter();
 };
 
