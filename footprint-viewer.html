@@ -22,6 +22,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 .btn-ghost{background:var(--border);color:var(--muted)}
 .btn-ghost.active{background:#2a2a1a;color:var(--accent);border:1px solid var(--accent)}
 .btn-ghost:active{opacity:.7}
+.btn:disabled{opacity:.35;pointer-events:none;cursor:default}
 .btn-icon{background:var(--border);color:var(--muted);width:36px;height:36px;padding:0;display:flex;align-items:center;justify-content:center;font-size:16px;border-radius:8px}
 .btn-icon:active{opacity:.7;transform:scale(.95)}
 #map{flex:1;width:100%;z-index:1}
@@ -110,10 +111,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 .time-slider-play{background:var(--border);color:var(--text);width:28px;height:28px;border:none;border-radius:8px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .time-slider-play.playing{background:#2a2a1a;color:var(--accent)}
 .time-slider-readout{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);margin:8px 0;white-space:nowrap}
-.time-slider-track{flex:1;position:relative;width:28px;display:flex;align-items:center;justify-content:center}
+.time-slider-track{flex:1;position:relative;width:28px;display:flex;align-items:stretch;justify-content:center;padding:10px 0}
 .time-slider-track input[type=range]{
-  writing-mode:vertical-lr; direction:rtl;
-  width:6px; height:100%;
+  writing-mode:vertical-lr; direction:ltr;
+  width:6px;
   -webkit-appearance:none; appearance:none;
   background:var(--border); border-radius:3px; outline:none; margin:0;
 }
@@ -121,7 +122,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
   -webkit-appearance:none; width:20px; height:14px; border-radius:5px;
   background:var(--accent); border:1px solid #0d0d0f; cursor:pointer;
 }
+.time-slider-track input[type=range]::-moz-range-thumb{
+  width:20px; height:14px; border-radius:5px;
+  background:var(--accent); border:1px solid #0d0d0f; cursor:pointer;
+}
 .time-slider-hint{font-size:9px;color:var(--muted);text-align:center;line-height:1.3;padding:0 4px;margin-top:6px}
+.time-slider-bubble{position:absolute;right:100%;margin-right:10px;top:10px;transform:translateY(-50%);
+  background:var(--accent);color:#0d0d0f;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;
+  padding:3px 7px;border-radius:6px;white-space:nowrap;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.time-slider-bubble::after{content:'';position:absolute;left:100%;top:50%;transform:translateY(-50%);
+  border:5px solid transparent;border-left-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -137,11 +147,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 </header>
 <div id="map"></div>
 <div class="time-slider-wrap hidden" id="timeSliderWrap">
-  <button class="time-slider-play" id="btnAnimPlay" title="Abspielen">▶</button>
+  <button class="time-slider-play" id="btnAnimPlay" title="Tagesverlauf automatisch abspielen">▶</button>
   <div class="time-slider-track">
     <input type="range" id="animSlider" min="0" max="1439" step="5" value="0">
+    <div class="time-slider-bubble" id="animBubble">00:00</div>
   </div>
-  <div class="time-slider-readout" id="animReadout">00:00</div>
   <div class="time-slider-hint" id="animHint"></div>
 </div>
 <div class="drop-overlay" id="dropOverlay">
@@ -331,10 +341,11 @@ function applyTheme() {
 
 // ── TIME MARKERS ──────────────────────────────────────────────────────────
 function fmtTime(ts, withDate) {
-  if (withDate) {
-    return new Date(ts).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
-  }
-  return new Date(ts).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'});
+  const d = new Date(ts);
+  const parts = new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Berlin'}).formatToParts(d);
+  const get = type => parts.find(p=>p.type===type).value;
+  if (withDate) return `${get('day')}.${get('month')} - ${get('hour')}:${get('minute')}`;
+  return `${get('hour')}:${get('minute')}`;
 }
 
 function buildMarkers(pts, intervalMin) {
@@ -449,6 +460,15 @@ function isSingleDayFilter() {
   const minTs = Math.min(...tsPts.map(p=>p.ts)), maxTs = Math.max(...tsPts.map(p=>p.ts));
   return dayOf(minTs) === dayOf(maxTs);
 }
+function updateAnimBubble(value) {
+  const track = document.querySelector('.time-slider-track');
+  const bubble = document.getElementById('animBubble');
+  bubble.textContent = fmtMinutes(value);
+  const inset = 10; // must match the margin on input[type=range] in .time-slider-track
+  const usable = track.clientHeight - inset * 2;
+  const y = inset + (value / 1439) * Math.max(usable, 0);
+  bubble.style.top = y + 'px';
+}
 function updateAnimAvailability() {
   const wrap = document.getElementById('timeSliderWrap');
   const hint = document.getElementById('animHint');
@@ -456,10 +476,11 @@ function updateAnimAvailability() {
   wrap.classList.remove('hidden');
   const singleDay = isSingleDayFilter();
   wrap.classList.toggle('disabled', !singleDay);
-  hint.textContent = singleDay ? '' : 'Wähle einen Tag';
+  hint.textContent = singleDay ? 'Tag abspielen' : 'Wähle einen Tag';
+  document.getElementById('btnDateLabels').disabled = singleDay;
   stopAnimation();
   document.getElementById('animSlider').value = 0;
-  document.getElementById('animReadout').textContent = '00:00';
+  updateAnimBubble(0);
   if (animRouteLayer) { map.removeLayer(animRouteLayer); animRouteLayer = null; }
   if (animMarker) { map.removeLayer(animMarker); animMarker = null; }
 }
@@ -489,7 +510,7 @@ function startAnimation() {
     let v = parseInt(slider.value) + 5;
     if (v > 1439) v = 1439;
     slider.value = v;
-    document.getElementById('animReadout').textContent = fmtMinutes(v);
+    updateAnimBubble(v);
     renderAnimationFrame(v);
     if (v >= 1439) stopAnimation();
   }, 80);
@@ -500,7 +521,7 @@ document.getElementById('btnAnimPlay').onclick = () => {
 };
 document.getElementById('animSlider').addEventListener('input', function() {
   stopAnimation();
-  document.getElementById('animReadout').textContent = fmtMinutes(parseInt(this.value));
+  updateAnimBubble(parseInt(this.value));
   renderAnimationFrame(parseInt(this.value));
 });
 
