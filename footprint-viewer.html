@@ -304,6 +304,12 @@ function parseGPX(text) {
   return pts;
 }
 
+function tsMinMax(pts) {
+  let min = Infinity, max = -Infinity;
+  for (const p of pts) { if (p.ts < min) min = p.ts; if (p.ts > max) max = p.ts; }
+  return [min, max];
+}
+
 function decimate(pts, maxPts) {
   if (pts.length <= maxPts) return pts;
   const step = Math.ceil(pts.length / maxPts);
@@ -412,8 +418,7 @@ function updateStats(pts) {
   const dist  = totalDistance(pts);
   const tsPts = pts.filter(p=>p.ts);
   const days  = new Set(tsPts.map(p=>new Date(p.ts).toDateString())).size;
-  const minTs = tsPts.length ? Math.min(...tsPts.map(p=>p.ts)) : null;
-  const maxTs = tsPts.length ? Math.max(...tsPts.map(p=>p.ts)) : null;
+  const [minTs, maxTs] = tsPts.length ? tsMinMax(tsPts) : [null, null];
   document.getElementById('statDist').textContent   = dist>0 ? Math.round(dist).toLocaleString('de') : '—';
   document.getElementById('statPoints').textContent = pts.length.toLocaleString('de');
   document.getElementById('statDays').textContent   = days>0 ? days : '—';
@@ -438,7 +443,7 @@ function updateDataRange() {
   const el = document.getElementById('dataRange');
   const tsPts = allParsedPoints.filter(p=>p.ts);
   if (!tsPts.length) { el.style.display='none'; return; }
-  const minTs = Math.min(...tsPts.map(p=>p.ts)), maxTs = Math.max(...tsPts.map(p=>p.ts));
+  const [minTs, maxTs] = tsMinMax(tsPts);
   const fmt = ts => new Date(ts).toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'2-digit',timeZone:'Europe/Berlin'});
   el.textContent = fmt(minTs) === fmt(maxTs) ? fmt(minTs) : `${fmt(minTs)} – ${fmt(maxTs)}`;
   el.style.display = '';
@@ -457,7 +462,7 @@ function isSingleDayFilter() {
   const tsPts = filteredPoints.filter(p=>p.ts);
   if (!tsPts.length) return false;
   const dayOf = ts => new Date(ts).toLocaleDateString('sv',{timeZone:'Europe/Berlin'});
-  const minTs = Math.min(...tsPts.map(p=>p.ts)), maxTs = Math.max(...tsPts.map(p=>p.ts));
+  const [minTs, maxTs] = tsMinMax(tsPts);
   return dayOf(minTs) === dayOf(maxTs);
 }
 function updateAnimBubble(value) {
@@ -575,7 +580,7 @@ function initWithPoints() {
   fullBounds = L.latLngBounds(allParsedPoints.map(p=>[p.lat,p.lon]));
   const tsPts = allParsedPoints.filter(p=>p.ts);
   if (tsPts.length) {
-    setDateTimeFields(Math.min(...tsPts.map(p=>p.ts)), Math.max(...tsPts.map(p=>p.ts)));
+    setDateTimeFields(...tsMinMax(tsPts));
   }
   updateDataRange();
   applyFilter();
@@ -590,14 +595,20 @@ function initWithPoints() {
 async function loadFiles(files) {
   if (!files||!files.length) return;
   setLoading(true);
-  let newPts = [];
-  for (const file of files) newPts.push(...parseGPX(await file.text()));
-  setLoading(false);
-  if (!newPts.length) { showToast('⚠️ Keine GPS-Punkte gefunden'); return; }
-  allParsedPoints = [...allParsedPoints, ...newPts];
-  initWithPoints();
-  dbSave(allParsedPoints);
-  showToast(`✓ ${newPts.length.toLocaleString('de')} Punkte geladen`);
+  try {
+    let newPts = [];
+    for (const file of files) newPts = newPts.concat(parseGPX(await file.text()));
+    if (!newPts.length) { showToast('⚠️ Keine GPS-Punkte gefunden'); return; }
+    allParsedPoints = allParsedPoints.concat(newPts);
+    initWithPoints();
+    dbSave(allParsedPoints);
+    showToast(`✓ ${newPts.length.toLocaleString('de')} Punkte geladen`);
+  } catch (e) {
+    console.error('loadFiles failed', e);
+    showToast('⚠️ Fehler beim Laden der Datei');
+  } finally {
+    setLoading(false);
+  }
 }
 
 async function restoreFromDB() {
@@ -697,7 +708,7 @@ document.getElementById('btnFilterApply').onclick = () => { applyFilter(); close
 document.getElementById('btnFilterReset').onclick = () => {
   const tsPts = allParsedPoints.filter(p=>p.ts);
   if (tsPts.length) {
-    setDateTimeFields(Math.min(...tsPts.map(p=>p.ts)), Math.max(...tsPts.map(p=>p.ts)));
+    setDateTimeFields(...tsMinMax(tsPts));
   }
   applyFilter(); closeFilter();
 };
